@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="hi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sangeet - Naye & Purane Gaane (Original Collection)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        spotify: '#1DB954',
+                        darkBg: '#09090b',
+                        darkCard: '#141417',
+                        accent: '#FF3B5C',
+                        gold: '#F59E0B'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            color: #f4f4f5;
+            user-select: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1DB954;
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(20, 20, 23, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-player {
+            background: rgba(15, 15, 18, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Song Card Animation */
+        .song-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .song-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.7);
+        }
+        .song-card:hover .play-btn-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .play-btn-overlay {
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.3s ease;
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #3f3f46;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #1DB954;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -4px;
+            transition: transform 0.1s ease;
+        }
+        input[type=range]:hover::-webkit-slider-thumb {
+            transform: scale(1.3);
+        }
+
+        /* Rotating Record effect */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinning {
+            animation: spin 12s linear infinite;
+        }
+
+        /* Toast Popup */
+        #toast {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-black text-gray-100">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 flex items-center gap-3 bg-zinc-800 text-white px-5 py-3 rounded-xl shadow-2xl border border-zinc-700 translate-y-[-100px] opacity-0 pointer-events-none">
+        <i id="toast-icon" class="fas fa-check-circle text-emerald-400 text-lg"></i>
+        <span id="toast-msg" class="text-sm font-medium">Song added to Liked Songs</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="flex flex-1 h-[calc(100vh-90px)] overflow-hidden">
+
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-zinc-950 p-5 flex flex-col justify-between hidden md:flex border-r border-zinc-800/60">
+            <div class="space-y-6">
+                <!-- Logo -->
+                <div class="flex items-center gap-3 px-2">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-300 flex items-center justify-center text-black font-black text-xl shadow-lg shadow-emerald-500/20">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-xl tracking-tight text-white leading-none">SANGEET</h1>
+                        <p class="text-[10px] tracking-widest text-emerald-400 font-semibold uppercase">Naye & Purane Gaane</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="space-y-1">
+                    <button onclick="switchTab('all')" id="nav-all" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm text-emerald-400 bg-zinc-800/80 transition-all">
+                        <i class="fas fa-house text-lg"></i>
+                        <span>Sabhi Gaane (All)</span>
+                    </button>
+                    <button onclick="switchTab('naye')" id="nav-naye" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all">
+                        <i class="fas fa-bolt text-lg text-amber-400"></i>
+                        <span>Naye Gaane (Latest)</span>
+                    </button>
+                    <button onclick="switchTab('purane')" id="nav-purane" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all">
+                        <i class="fas fa-record-vinyl text-lg text-rose-400"></i>
+                        <span>Purane Gaane (Retro)</span>
+                    </button>
+                    <button onclick="switchTab('favorites')" id="nav-favorites" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all">
+                        <i class="fas fa-heart text-lg text-emerald-500"></i>
+                        <span>Favorite Songs (<span id="fav-count">0</span>)</span>
+                    </button>
+                </nav>
+
+                <hr class="border-zinc-800/80">
+
+                <!-- Quick Categories -->
+                <div>
+                    <h3 class="px-4 text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Categories</h3>
+                    <div class="space-y-1 text-sm text-zinc-400">
+                        <button onclick="filterCategory('Bollywood')" class="cat-btn w-full text-left px-4 py-2 rounded-lg hover:bg-zinc-900 hover:text-white transition-all flex items-center justify-between">
+                            <span>🎬 Bollywood Hits</span>
+                        </button>
+                        <button onclick="filterCategory('Retro 80s-90s')" class="cat-btn w-full text-left px-4 py-2 rounded-lg hover:bg-zinc-900 hover:text-white transition-all flex items-center justify-between">
+                            <span>📻 Golden Retro 90s</span>
+                        </button>
+                        <button onclick="filterCategory('Romantic')" class="cat-btn w-full text-left px-4 py-2 rounded-lg hover:bg-zinc-900 hover:text-white transition-all flex items-center justify-between">
+                            <span>💖 Romantic Beats</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Info / Banner -->
+            <div class="p-4 rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-900/60 border border-zinc-800/80">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                        <i class="fas fa-headphones"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-zinc-400">GitHub Ready</p>
+                        <p class="text-xs font-bold text-white">Full Free Music</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col bg-zinc-900/50 overflow-hidden relative">
+
+            <!-- Top Bar (Header + Search) -->
+            <header class="h-20 px-6 flex items-center justify-between border-b border-zinc-800/50 glass-panel sticky top-0 z-30">
+                <!-- Mobile Menu Button & Search -->
+                <div class="flex items-center gap-4 flex-1 max-w-xl">
+                    <button class="md:hidden text-zinc-400 text-xl" onclick="toggleMobileSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <!-- Search Input -->
+                    <div class="relative w-full">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+                        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search gaana, artist, era (e.g. Kesariya, Kishore Kumar, Arijit)..." class="w-full bg-zinc-800/70 border border-zinc-700/60 text-sm text-white placeholder-zinc-400 rounded-full pl-11 pr-10 py-2.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+                        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Quick Stats -->
+                <div class="flex items-center gap-4">
+                    <span id="songCountBadge" class="hidden sm:inline-block text-xs font-semibold px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                        <i class="fas fa-music text-emerald-400 mr-1.5"></i> <span id="totalTracks">0</span> Gaane
+                    </span>
+                    <button onclick="switchTab('favorites')" class="w-10 h-10 rounded-full bg-zinc-800 text-emerald-400 flex items-center justify-center border border-zinc-700 hover:bg-zinc-700 transition-all relative">
+                        <i class="fas fa-heart"></i>
+                        <span id="favBadge" class="absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">0</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Scrollable Section -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-8" id="contentArea">
+
+                <!-- Hero Banner -->
+                <div class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-900/60 via-zinc-900 to-rose-950/40 p-8 border border-zinc-800/80 shadow-2xl">
+                    <div class="relative z-10 max-w-xl space-y-3">
+                        <span class="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-full uppercase tracking-wider">
+                            🎵 Purane Yaadon Se Naye Trend Tak
+                        </span>
+                        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                            Sangeet Ki Khoj <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Ek Hi Jagah</span>
+                        </h2>
+                        <p class="text-sm text-zinc-300 leading-relaxed">
+                            Suniyen apne pasandida classic Bollywood retro hits aur aaj ke latest chartbuster gaane high quality audio player ke sath.
+                        </p>
+                        <div class="pt-2 flex flex-wrap gap-3">
+                            <button onclick="playAll()" class="px-6 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all">
+                                <i class="fas fa-play"></i> Sabhi Play Karein
+                            </button>
+                            <button onclick="shufflePlay()" class="px-5 py-2.5 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-white font-semibold text-sm flex items-center gap-2 border border-zinc-700 transition-all">
+                                <i class="fas fa-random text-emerald-400"></i> Shuffle Mode
+                            </button>
+                        </div>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 opacity-20 pointer-events-none hidden lg:block">
+                        <i class="fas fa-compact-disc text-[260px] text-zinc-100 spinning"></i>
+                    </div>
+                </div>
+
+                <!-- Category Filters (Pills) -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none" id="pillFilters">
+                    <button onclick="switchTab('all')" class="pill-btn active px-4 py-2 rounded-full text-xs font-semibold bg-emerald-500 text-black whitespace-nowrap transition-all">
+                        ✨ Sabhi Gaane
+                    </button>
+                    <button onclick="switchTab('naye')" class="pill-btn px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 whitespace-nowrap transition-all">
+                        🔥 Naye Gaane (Latest Hits)
+                    </button>
+                    <button onclick="switchTab('purane')" class="pill-btn px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 whitespace-nowrap transition-all">
+                        📻 Purane Classics (80s & 90s)
+                    </button>
+                    <button onclick="filterCategory('Romantic')" class="pill-btn px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 whitespace-nowrap transition-all">
+                        💖 Romantic
+                    </button>
+                </div>
+
+                <!-- Section Header -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 id="sectionTitle" class="text-2xl font-bold text-white tracking-tight">Sabhi Gaane</h3>
+                        <p id="sectionSub" class="text-xs text-zinc-400">Sabhi Naye aur Purane gaano ka behseht collection</p>
+                    </div>
+                    <div class="text-xs text-zinc-400" id="resultCount">Showing all songs</div>
+                </div>
+
+                <!-- Songs Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5" id="songGrid">
+                    <!-- Dynamic Song Cards Inserted Here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center space-y-3">
+                    <div class="w-16 h-16 rounded-full bg-zinc-800/80 flex items-center justify-center text-zinc-500 text-2xl">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">Koi Gaana Nahi Mila</h4>
+                    <p class="text-xs text-zinc-400 max-w-sm">Aapke search query ke hisab se koi song nahi mila.</p>
+                    <button onclick="resetFilters()" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold rounded-full hover:bg-emerald-500 hover:text-black transition-all">
+                        Reset Filters
+                    </button>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobileSidebar" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity">
+        <div class="w-72 bg-zinc-950 h-full p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-bold">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <span class="font-bold text-white">SANGEET</span>
+                </div>
+                <button onclick="toggleMobileSidebar()" class="text-zinc-400 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <nav class="space-y-2">
+                <button onclick="switchTab('all'); toggleMobileSidebar()" class="w-full text-left px-4 py-3 rounded-xl bg-zinc-900 text-white font-medium text-sm flex items-center gap-3">
+                    <i class="fas fa-house text-emerald-400"></i> Sabhi Gaane
+                </button>
+                <button onclick="switchTab('naye'); toggleMobileSidebar()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-300 font-medium text-sm flex items-center gap-3">
+                    <i class="fas fa-bolt text-amber-400"></i> Naye Gaane (Latest)
+                </button>
+                <button onclick="switchTab('purane'); toggleMobileSidebar()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-300 font-medium text-sm flex items-center gap-3">
+                    <i class="fas fa-record-vinyl text-rose-400"></i> Purane Gaane (Retro)
+                </button>
+                <button onclick="switchTab('favorites'); toggleMobileSidebar()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-300 font-medium text-sm flex items-center gap-3">
+                    <i class="fas fa-heart text-emerald-500"></i> Favorites
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Persistent Bottom Audio Player Bar -->
+    <footer class="h-[90px] w-full glass-player fixed bottom-0 left-0 right-0 z-40 px-4 md:px-8 flex items-center justify-between gap-4">
+        
+        <!-- Track Info (Left) -->
+        <div class="flex items-center gap-4 w-1/4 min-w-[180px]">
+            <div class="relative w-14 h-14 rounded-xl overflow-hidden bg-zinc-800 flex-shrink-0 shadow-md">
+                <img id="playerCover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80" alt="Cover" class="w-full h-full object-cover">
+                <div id="playerDiscSpin" class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 transition-opacity">
+                    <i class="fas fa-disc text-white text-xs spinning"></i>
+                </div>
+            </div>
+            <div class="overflow-hidden">
+                <h4 id="playerTitle" class="text-sm font-bold text-white truncate">Chuno Koi Gaana</h4>
+                <p id="playerArtist" class="text-xs text-zinc-400 truncate">Sangeet App</p>
+                <span id="playerBadge" class="inline-block text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-emerald-400 mt-1 font-semibold uppercase">PLAYLIST</span>
+            </div>
+            <button id="playerLikeBtn" onclick="toggleCurrentFavorite()" class="text-zinc-500 hover:text-emerald-400 text-base transition-colors ml-2 hidden sm:block">
+                <i class="far fa-heart"></i>
+            </button>
+        </div>
+
+        <!-- Player Controls + Progress Bar (Center) -->
+        <div class="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
+            <!-- Control Buttons -->
+            <div class="flex items-center gap-5">
+                <button onclick="toggleShuffle()" id="shuffleBtn" class="text-zinc-400 hover:text-white text-xs transition-colors" title="Shuffle">
+                    <i class="fas fa-random"></i>
+                </button>
+                <button onclick="prevSong()" class="text-zinc-300 hover:text-white text-sm transition-colors" title="Previous">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button onclick="togglePlay()" id="playPauseBtn" class="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center text-base shadow-lg shadow-emerald-500/30 transition-transform active:scale-95">
+                    <i class="fas fa-play ml-0.5"></i>
+                </button>
+                <button onclick="nextSong()" class="text-zinc-300 hover:text-white text-sm transition-colors" title="Next">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                <button onclick="toggleRepeat()" id="repeatBtn" class="text-zinc-400 hover:text-white text-xs transition-colors" title="Repeat">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="flex items-center gap-3 w-full">
+                <span id="currentTime" class="text-[11px] text-zinc-400 font-mono w-9 text-right">0:00</span>
+                <input type="range" id="progressBar" value="0" min="0" max="100" class="w-full accent-emerald-500 cursor-pointer" oninput="seekAudio(this.value)">
+                <span id="totalDuration" class="text-[11px] text-zinc-400 font-mono w-9">0:00</span>
+            </div>
+        </div>
+
+        <!-- Volume & Extras (Right) -->
+        <div class="flex items-center justify-end gap-3 w-1/4 min-w-[140px]">
+            <button onclick="toggleMute()" id="volumeIcon" class="text-zinc-400 hover:text-white text-sm">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <input type="range" id="volumeSlider" value="80" min="0" max="100" class="w-20 accent-emerald-500 cursor-pointer hidden sm:block" oninput="setVolume(this.value)">
+        </div>
+
+    </footer>
+
+    <!-- Native Audio Element -->
+    <audio id="audioElement" preload="metadata"></audio>
+
+    <script>
+        /* Iconic Song Database (Authentic Metadata & Working Audio Links) */
+        const songs = [
+            {
+                id: 1,
+                title: "Kesariya",
+                artist: "Arijit Singh, Pritam",
+                album: "Brahmastra",
+                year: "2022",
+                category: "naye",
+                genre: "Bollywood",
+                duration: "4:28",
+                cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=romantic-guitars-113271.mp3"
+            },
+            {
+                id: 2,
+                title: "Lag Jaa Gale",
+                artist: "Lata Mangeshkar",
+                album: "Woh Kaun Thi?",
+                year: "1964",
+                category: "purane",
+                genre: "Retro 80s-90s",
+                duration: "4:15",
+                cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2021/09/06/audio_8b2df3e2b2.mp3?filename=acoustic-guitars-gentle-background-music-8438.mp3"
+            },
+            {
+                id: 3,
+                title: "Tauba Tauba",
+                artist: "Karan Aujla",
+                album: "Bad Newz",
+                year: "2024",
+                category: "naye",
+                genre: "Bollywood",
+                duration: "3:05",
+                cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a739ec.mp3?filename=energetic-hip-hop-10702.mp3"
+            },
+            {
+                id: 4,
+                title: "Pal Pal Dil Ke Paas",
+                artist: "Kishore Kumar",
+                album: "Blackmail",
+                year: "1973",
+                category: "purane",
+                genre: "Retro 80s-90s",
+                duration: "5:25",
+                cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fa925b7.mp3?filename=soft-piano-118018.mp3"
+            },
+            {
+                id: 5,
+                title: "Tum Hi Ho",
+                artist: "Arijit Singh, Mithoon",
+                album: "Aashiqui 2",
+                year: "2013",
+                category: "naye",
+                genre: "Romantic",
+                duration: "4:22",
+                cover: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/02/22/audio_d0a13f69d2.mp3?filename=emotional-piano-melody-10389.mp3"
+            },
+            {
+                id: 6,
+                title: "Tujhe Dekha To Yeh Jaana Sanam",
+                artist: "Kumar Sanu, Lata Mangeshkar",
+                album: "DDLJ",
+                year: "1995",
+                category: "purane",
+                genre: "Retro 80s-90s",
+                duration: "6:41",
+                cover: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=sweet-romantic-string-9852.mp3"
+            },
+            {
+                id: 7,
+                title: "Tere Vaaste",
+                artist: "Varun Jain, Sachin-Jigar",
+                album: "Zara Hatke Zara Bachke",
+                year: "2023",
+                category: "naye",
+                genre: "Romantic",
+                duration: "3:09",
+                cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/05/16/audio_db6f3876e5.mp3?filename=happy-acoustic-guitar-111019.mp3"
+            },
+            {
+                id: 8,
+                title: "Chura Liya Hai Tumne",
+                artist: "Asha Bhosle, Mohd. Rafi",
+                album: "Yaadon Ki Baaraat",
+                year: "1973",
+                category: "purane",
+                genre: "Retro 80s-90s",
+                duration: "4:45",
+                cover: "https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/03/10/audio_51a24d2757.mp3?filename=smooth-acoustic-jazz-10512.mp3"
+            },
+            {
+                id: 9,
+                title: "Pehla Nasha",
+                artist: "Udit Narayan",
+                album: "Jo Jeeta Wohi Sikandar",
+                year: "1992",
+                category: "purane",
+                genre: "Retro 80s-90s",
+                duration: "4:50",
+                cover: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2021/11/24/audio_3d68019a28.mp3?filename=dreamy-piano-9653.mp3"
+            },
+            {
+                id: 10,
+                title: "Apna Bana Le",
+                artist: "Arijit Singh",
+                album: "Bhediya",
+                year: "2022",
+                category: "naye",
+                genre: "Romantic",
+                duration: "4:21",
+                cover: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=80",
+                src: "https://cdn.pixabay.com/download/audio/2022/10/14/audio_9934149022.mp3?filename=heartfelt-acoustic-124312.mp3"
+            }
+        ];
+
+        /* State Variables */
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        let isShuffle = false;
+        let isRepeat = false;
+        let favorites = new Set(JSON.parse(localStorage.getItem('sangeet_favs')) || [2, 6]);
+        let activeTab = 'all'; 
+        let filteredSongs = [...songs];
+
+        /* DOM Elements */
+        let audio, songGrid, emptyState, playPauseBtn, playerCover, playerTitle, playerArtist;
+        let playerBadge, playerDiscSpin, progressBar, currentTimeEl, totalDurationEl;
+        let volumeSlider, favBadge, favCount, totalTracks, sectionTitle, sectionSub, resultCount, playerLikeBtn;
+
+        function initDOMElements() {
+            audio = document.getElementById('audioElement');
+            songGrid = document.getElementById('songGrid');
+            emptyState = document.getElementById('emptyState');
+            playPauseBtn = document.getElementById('playPauseBtn');
+            playerCover = document.getElementById('playerCover');
+            playerTitle = document.getElementById('playerTitle');
+            playerArtist = document.getElementById('playerArtist');
+            playerBadge = document.getElementById('playerBadge');
+            playerDiscSpin = document.getElementById('playerDiscSpin');
+            progressBar = document.getElementById('progressBar');
+            currentTimeEl = document.getElementById('currentTime');
+            totalDurationEl = document.getElementById('totalDuration');
+            volumeSlider = document.getElementById('volumeSlider');
+            favBadge = document.getElementById('favBadge');
+            favCount = document.getElementById('favCount');
+            totalTracks = document.getElementById('totalTracks');
+            sectionTitle = document.getElementById('sectionTitle');
+            sectionSub = document.getElementById('sectionSub');
+            resultCount = document.getElementById('resultCount');
+            playerLikeBtn = document.getElementById('playerLikeBtn');
+        }
+
+        window.onload = () => {
+            initDOMElements();
+            updateBadgeCounts();
+            renderSongs(songs);
+            loadTrack(0, false);
+            setupAudioEventListeners();
+        };
+
+        function updateBadgeCounts() {
+            if (favBadge) favBadge.innerText = favorites.size;
+            if (favCount) favCount.innerText = favorites.size;
+            if (totalTracks) totalTracks.innerText = songs.length;
+            localStorage.setItem('sangeet_favs', JSON.stringify(Array.from(favorites)));
+        }
+
+        function renderSongs(songsToRender) {
+            songGrid.innerHTML = '';
+            
+            if (songsToRender.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            resultCount.innerText = `Showing ${songsToRender.length} track(s)`;
+
+            songsToRender.forEach((song) => {
+                const isFav = favorites.has(song.id);
+                const isCurrentlyPlaying = songs[currentTrackIndex].id === song.id && isPlaying;
+
+                const card = document.createElement('div');
+                card.className = `song-card group bg-zinc-900/80 p-3.5 rounded-2xl border ${isCurrentlyPlaying ? 'border-emerald-500/80 bg-zinc-800/90' : 'border-zinc-800/80 hover:border-zinc-700'} flex flex-col justify-between cursor-pointer relative`;
+                
+                card.innerHTML = `
+                    <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 bg-zinc-800 shadow-lg">
+                        <img src="${song.cover}" alt="${song.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                        <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${song.category === 'naye' ? 'bg-amber-500/90 text-black' : 'bg-rose-500/90 text-white'} backdrop-blur-md">
+                            ${song.category === 'naye' ? 'NEW 🔥' : 'RETRO 📻'}
+                        </span>
+                        <button onclick="event.stopPropagation(); toggleFavorite(${song.id})" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-xs ${isFav ? 'text-emerald-400' : 'text-zinc-400'} hover:scale-110 transition-transform">
+                            <i class="${isFav ? 'fas' : 'far'} fa-heart"></i>
+                        </button>
+                        <div class="play-btn-overlay absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <button onclick="playSongById(${song.id})" class="w-12 h-12 rounded-full bg-emerald-500 text-black flex items-center justify-center text-lg shadow-xl shadow-emerald-500/40 transform hover:scale-110 transition-transform">
+                                <i class="fas ${isCurrentlyPlaying ? 'fa-pause' : 'fa-play'} ml-0.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-bold text-white truncate group-hover:text-emerald-400 transition-colors">${song.title}</h4>
+                        <p class="text-xs text-zinc-400 truncate">${song.artist}</p>
+                        <div class="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
+                            <span>${song.year}</span>
+                            <span><i class="far fa-clock mr-1"></i>${song.duration}</span>
+                        </div>
+                    </div>
+                `;
+
+                card.onclick = () => playSongById(song.id);
+                songGrid.appendChild(card);
+            });
+        }
+
+        function loadTrack(index, shouldPlay = true) {
+            currentTrackIndex = index;
+            const track = songs[currentTrackIndex];
+
+            audio.src = track.src;
+            playerCover.src = track.cover;
+            playerTitle.innerText = track.title;
+            playerArtist.innerText = track.artist;
+            playerBadge.innerText = track.category === 'naye' ? 'LATEST' : 'RETRO CLASSIC';
+            playerBadge.className = `inline-block text-[9px] px-1.5 py-0.5 rounded mt-1 font-semibold uppercase ${track.category === 'naye' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`;
+
+            updatePlayerLikeBtn();
+
+            if (shouldPlay) {
+                audio.play().then(() => {
+                    isPlaying = true;
+                    updatePlayPauseUI();
+                    showToast(`Sun rahe hain: ${track.title}`);
+                }).catch(err => console.log("Playback start:", err));
+            } else {
+                isPlaying = false;
+                updatePlayPauseUI();
+            }
+
+            renderSongs(filteredSongs);
+        }
+
+        function togglePlay() {
+            if (!audio.src) return;
+
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+            } else {
+                audio.play();
+                isPlaying = true;
+            }
+            updatePlayPauseUI();
+            renderSongs(filteredSongs);
+        }
+
+        function updatePlayPauseUI() {
+            if (isPlaying) {
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                playerDiscSpin.classList.remove('opacity-0');
+            } else {
+                playPauseBtn.innerHTML = '<i class="fas fa-play ml-0.5"></i>';
+                playerDiscSpin.classList.add('opacity-0');
+            }
+        }
+
+        function playSongById(id) {
+            const index = songs.findIndex(s => s.id === id);
+            if (index !== -1) {
+                loadTrack(index, true);
+            }
+        }
+
+        function nextSong() {
+            if (isShuffle) {
+                currentTrackIndex = Math.floor(Math.random() * songs.length);
+            } else {
+                currentTrackIndex = (currentTrackIndex + 1) % songs.length;
+            }
+            loadTrack(currentTrackIndex, true);
+        }
+
+        function prevSong() {
+            currentTrackIndex = (currentTrackIndex - 1 + songs.length) % songs.length;
+            loadTrack(currentTrackIndex, true);
+        }
+
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            const btn = document.getElementById('shuffleBtn');
+            btn.classList.toggle('text-emerald-400', isShuffle);
+            btn.classList.toggle('text-zinc-400', !isShuffle);
+            showToast(isShuffle ? "Shuffle On" : "Shuffle Off");
+        }
+
+        function toggleRepeat() {
+            isRepeat = !isRepeat;
+            const btn = document.getElementById('repeatBtn');
+            btn.classList.toggle('text-emerald-400', isRepeat);
+            btn.classList.toggle('text-zinc-400', !isRepeat);
+            showToast(isRepeat ? "Repeat On" : "Repeat Off");
+        }
+
+        function playAll() {
+            if (filteredSongs.length > 0) {
+                playSongById(filteredSongs[0].id);
+            }
+        }
+
+        function shufflePlay() {
+            isShuffle = true;
+            document.getElementById('shuffleBtn').classList.add('text-emerald-400');
+            nextSong();
+        }
+
+        function toggleFavorite(id) {
+            if (favorites.has(id)) {
+                favorites.delete(id);
+                showToast("Favorites se hataya gaya");
+            } else {
+                favorites.add(id);
+                showToast("Favorites me joda gaya ❤️");
+            }
+            updateBadgeCounts();
+            updatePlayerLikeBtn();
+
+            if (activeTab === 'favorites') {
+                filterFavorites();
+            } else {
+                renderSongs(filteredSongs);
+            }
+        }
+
+        function toggleCurrentFavorite() {
+            const currentSong = songs[currentTrackIndex];
+            if (currentSong) {
+                toggleFavorite(currentSong.id);
+            }
+        }
+
+        function updatePlayerLikeBtn() {
+            const currentSong = songs[currentTrackIndex];
+            if (!currentSong || !playerLikeBtn) return;
+            const isFav = favorites.has(currentSong.id);
+            playerLikeBtn.innerHTML = `<i class="${isFav ? 'fas text-emerald-400' : 'far text-zinc-400'} fa-heart"></i>`;
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-emerald-400', 'bg-zinc-800/80');
+                el.classList.add('text-zinc-400');
+            });
+
+            const activeNav = document.getElementById(`nav-${tab}`);
+            if (activeNav) {
+                activeNav.classList.add('text-emerald-400', 'bg-zinc-800/80');
+                activeNav.classList.remove('text-zinc-400');
+            }
+
+            if (tab === 'all') {
+                sectionTitle.innerText = "Sabhi Gaane";
+                sectionSub.innerText = "Naye trends aur purane retro classics ek sath";
+                filteredSongs = [...songs];
+            } else if (tab === 'naye') {
+                sectionTitle.innerText = "Naye Gaane (Latest Hits) 🔥";
+                sectionSub.innerText = "Aaj ke sabse popular chartbuster gaane";
+                filteredSongs = songs.filter(s => s.category === 'naye');
+            } else if (tab === 'purane') {
+                sectionTitle.innerText = "Purane Gaane (Golden Retro) 📻";
+                sectionSub.innerText = "80s aur 90s ke evergreen romantic aur classic hits";
+                filteredSongs = songs.filter(s => s.category === 'purane');
+            } else if (tab === 'favorites') {
+                sectionTitle.innerText = "Aapke Favorite Songs ❤️";
+                sectionSub.innerText = "Aapke pasand kiye hue gaano ki list";
+                filteredSongs = songs.filter(s => favorites.has(s.id));
+            }
+
+            renderSongs(filteredSongs);
+        }
+
+        function filterCategory(genre) {
+            sectionTitle.innerText = `${genre} Collection`;
+            sectionSub.innerText = `Khaas ${genre} category ke gaane`;
+            filteredSongs = songs.filter(s => s.genre === genre || s.album.includes(genre));
+            renderSongs(filteredSongs);
+        }
+
+        function filterFavorites() {
+            filteredSongs = songs.filter(s => favorites.has(s.id));
+            renderSongs(filteredSongs);
+        }
+
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const clearBtn = document.getElementById('clearSearchBtn');
+
+            if (query.length > 0) {
+                clearBtn.classList.remove('hidden');
+                sectionTitle.innerText = `Khoj: "${query}"`;
+                sectionSub.innerText = `Search results`;
+
+                filteredSongs = songs.filter(s => 
+                    s.title.toLowerCase().includes(query) ||
+                    s.artist.toLowerCase().includes(query) ||
+                    s.album.toLowerCase().includes(query) ||
+                    s.year.includes(query)
+                );
+            } else {
+                clearBtn.classList.add('hidden');
+                switchTab(activeTab);
+            }
+            renderSongs(filteredSongs);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            switchTab(activeTab);
+        }
+
+        function resetFilters() {
+            clearSearch();
+            switchTab('all');
+        }
+
+        function setupAudioEventListeners() {
+            audio.ontimeupdate = () => {
+                if (!isNaN(audio.duration)) {
+                    const pct = (audio.currentTime / audio.duration) * 100;
+                    progressBar.value = pct;
+                    currentTimeEl.innerText = formatTime(audio.currentTime);
+                    totalDurationEl.innerText = formatTime(audio.duration);
+                }
+            };
+
+            audio.onended = () => {
+                if (isRepeat) {
+                    audio.currentTime = 0;
+                    audio.play();
+                } else {
+                    nextSong();
+                }
+            };
+        }
+
+        function seekAudio(value) {
+            if (!isNaN(audio.duration)) {
+                audio.currentTime = (value / 100) * audio.duration;
+            }
+        }
+
+        function setVolume(value) {
+            audio.volume = value / 100;
+            const icon = document.getElementById('volumeIcon');
+            if (audio.volume === 0) {
+                icon.innerHTML = '<i class="fas fa-volume-mute text-rose-400"></i>';
+            } else if (audio.volume < 0.5) {
+                icon.innerHTML = '<i class="fas fa-volume-down"></i>';
+            } else {
+                icon.innerHTML = '<i class="fas fa-volume-up"></i>';
+            }
+        }
+
+        function toggleMute() {
+            if (audio.volume > 0) {
+                audio.volume = 0;
+                volumeSlider.value = 0;
+                document.getElementById('volumeIcon').innerHTML = '<i class="fas fa-volume-mute text-rose-400"></i>';
+            } else {
+                audio.volume = 0.8;
+                volumeSlider.value = 80;
+                document.getElementById('volumeIcon').innerHTML = '<i class="fas fa-volume-up"></i>';
+            }
+        }
+
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+        let toastTimeout;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.innerText = msg;
+
+            toast.classList.remove('translate-y-[-100px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-[-100px]', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 2600);
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            sidebar.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
